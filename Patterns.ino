@@ -4,7 +4,7 @@
   struct Pattern
   {
     int pLength;      // bar length
-    int pHits;        // hits per bar 
+    int pHits;        // hits per bar
     int pStep;        // current step number 
   } ;
 
@@ -68,7 +68,7 @@ void processDevisions(){
     mainPattern.pStep++;
 
     if (pulse){
-      
+      // Pulse current sequence
     }
     else {
       
