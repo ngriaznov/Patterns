@@ -1,12 +1,19 @@
+/*
+  Patterns Sketch
+
+  This is a sketch for sending USB MIDI clock and triggers
+  that are following several algorithms.
+
+  Created 5/24/2016
+  By Nikita Griaznov
+
+  https://github.com/ngriaznov/patterns
+
+*/
+
 #include <MIDI.h>
 #include <FrequencyTimer2.h>
-
-  struct Pattern
-  {
-    int pLength;      // bar length
-    int pHits;        // hits per bar
-    int pStep;        // current step number 
-  } ;
+#include "EuclidianGenerator.h"
 
 #define                       CLOCK                 0xF8                // clock pulse message    
 #define                       START                 0xFA                // clock start message
@@ -18,9 +25,39 @@ volatile unsigned long        clockInterval;
 const int                     ledPin              = LED_BUILTIN;        // pin with a LED
 int                           ledState            = LOW;                // blink every whole beat 1/1
 
-volatile unsigned long        clockCount          = 0;                      // clock counter, used for LED 
+volatile unsigned long        clockCount          = 0;                  // clock counter, used for LED 
 volatile bool                 started             = false;              // we'll send start just once 
-Pattern                       mainPattern         = {16, 3, 1};
+
+TriggerGenerator** generators = new TriggerGenerator*[9];
+
+// setup everything
+void setup(void) {
+
+  randomSeed(analogRead(A0)); 
+  
+  // reserve led action
+  pinMode(ledPin, OUTPUT);
+
+  // limit range
+  bpm = constrain(bpm, 60.0, 240.0);
+  
+  // initialize clock interrupt, interval is in microseconds
+  clockInterval = 60000000/(24 * bpm);
+
+  // setup generators
+  for (int i = 1; i <= 9; i++) {
+    generators[i] = new EuclidianGenerator();
+    generators[i]->seed();
+  }
+  
+  // give some time for host device to initialize (optional)
+  delay(2000);
+
+  // set the timer. this zero-jitter timer, but only one available
+  FrequencyTimer2::setPeriod(clockInterval);
+  FrequencyTimer2::setOnOverflow(clockTick);
+  FrequencyTimer2::enable();
+}
 
 // main clock action
 void clockTick(void) {
@@ -58,22 +95,16 @@ void processDevisions(){
     notify(false);
   }
 
-  // process 16-th clock division
-  if (clockCount%6 == 0){
-    if (mainPattern.pStep > mainPattern.pLength) {
-      mainPattern.pStep = 1;
-    }
-    // Calculate if we should pulse or not
-    bool pulse = euclidian(mainPattern.pStep, mainPattern.pHits, mainPattern.pLength, 1);
-    mainPattern.pStep++;
-
-    if (pulse){
-      // Pulse current sequence
-    }
-    else {
-      
+  for (int i = 1; i <= 9; i++) {
+    if (clockCount%generators[i]->divider == 0) {
+      // process next trig
+      if (generators[i]->trig()){
+        usbMIDI.sendNoteOn(23 + i, 127, 1);
+        usbMIDI.sendNoteOff(23 + i, 127, 1);        
+      }
     }
   }
+  usbMIDI.send_now();
 }
 
 void loop(void) {
