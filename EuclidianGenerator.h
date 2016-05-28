@@ -17,9 +17,5 @@ class EuclidianGenerator : public TriggerGenerator
     public:
         virtual void seed();
         virtual bool trig();
-        EuclidianGenerator(int overclock);
-
-    private:
-        int overclock;
 };
 
