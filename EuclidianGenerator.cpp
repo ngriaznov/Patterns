@@ -14,6 +14,8 @@
 #include <cstdlib>
 #include <Arduino.h>
 
+bool steptrig;
+
 /**
   Seeds current generator with new data.
 */
@@ -44,11 +46,11 @@ bool EuclidianGenerator::trig()
         returns true or false according to the euclidean pattern
         return (((c + r) * k) % n) < k; */ 
     pos++;
-    bool isTrig = (((pos + 1) * hits) % lenght) < hits; 
+    steptrig = (((pos + 1) * hits) % lenght) < hits; 
 
     if (pos >= lenght){
       pos = 0; // we need to reset position to avoid overflow
     }
 
-    return isTrig;
+    return steptrig;
 }

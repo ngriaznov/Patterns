@@ -25,10 +25,12 @@ volatile unsigned long        clockInterval;
 const int                     ledPin              = LED_BUILTIN;        // pin with a LED
 int                           ledState            = LOW;                // blink every whole beat 1/1
 
-volatile unsigned long        clockCount          = 0;                  // clock counter, used for LED 
+volatile unsigned long        clockCount          = 0;                  // clock counter
+volatile bool                 change              = false;              // track clock changes
+
 volatile bool                 started             = false;              // we'll send start just once 
 
-TriggerGenerator** generators = new TriggerGenerator*[9];
+TriggerGenerator**            generators          = new TriggerGenerator*[9];
 
 // setup everything
 void setup(void) {
@@ -43,15 +45,15 @@ void setup(void) {
   
   // initialize clock interrupt, interval is in microseconds
   clockInterval = 60000000/(24 * bpm);
+  
+  // give some time for host device to initialize (optional)
+  delay(2000);
 
   // setup generators
   for (int i = 1; i <= 9; i++) {
     generators[i] = new EuclidianGenerator();
     generators[i]->seed();
   }
-  
-  // give some time for host device to initialize (optional)
-  delay(2000);
 
   // set the timer. this zero-jitter timer, but only one available
   FrequencyTimer2::setPeriod(clockInterval);
@@ -70,23 +72,15 @@ void clockTick(void) {
 
   // increase clock count
   clockCount++;
-
+  change = true;
+  
   // send clock signal
   usbMIDI.sendRealTime(CLOCK);
-
-  // run division processing
-  processDevisions();
-
-  if (clockCount%1536 == 0){
-    // Reset clock count each 16 bars
-    clockCount = 0;
-  }
 }
 
 void processDevisions(){
   // blink led at 1/4 of the beat
   if (clockCount%24 == 0){
-
     // light up the led
     notify(true);
   }
@@ -94,22 +88,29 @@ void processDevisions(){
     // turn off the led
     notify(false);
   }
-
+  
   for (int i = 1; i <= 9; i++) {
     if (clockCount%generators[i]->divider == 0) {
       // process next trig
       if (generators[i]->trig()){
         usbMIDI.sendNoteOn(23 + i, 127, 1);
-        usbMIDI.sendNoteOff(23 + i, 127, 1);        
+        usbMIDI.sendNoteOff(23 + i, 127, 1);     
       }
     }
   }
-  usbMIDI.send_now();
 }
 
 void loop(void) {
 
-  // here we need to skip incoming messages
-  while (usbMIDI.read()) {
+  if (change == true){
+    // run division processing
+    processDevisions();
+      
+    if (clockCount%1536 == 0){
+      // Reset clock count each 16 bars
+      clockCount = 0;
+    }
+
+    change = false;
   }
 }

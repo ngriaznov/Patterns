@@ -23,6 +23,7 @@ class TriggerGenerator
         int hits = 0;
         int pos = 0;
         int divider = 1;
-
+        
         virtual ~TriggerGenerator() {} 
+        
 };
