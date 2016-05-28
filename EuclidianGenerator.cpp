@@ -16,6 +16,10 @@
 
 bool steptrig;
 
+EuclidianGenerator::EuclidianGenerator(int over) {
+  overclock = over;
+}
+
 /**
   Seeds current generator with new data.
 */
@@ -23,7 +27,7 @@ void EuclidianGenerator::seed()
 {
   randomSeed(analogRead(A0)); 
   
-  divider = 6;
+  divider = 6 * overclock;
   lenght = random(1, 16);
   pos = 0;
   hits = random(1, 12);

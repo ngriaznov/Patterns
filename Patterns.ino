@@ -26,17 +26,13 @@ const int                     ledPin              = LED_BUILTIN;        // pin w
 int                           ledState            = LOW;                // blink every whole beat 1/1
 
 volatile unsigned long        clockCount          = 0;                  // clock counter
-volatile bool                 change              = false;              // track clock changes
-
+const int                     overclock           = 1;                // overclock rate
 volatile bool                 started             = false;              // we'll send start just once 
-
-TriggerGenerator**            generators          = new TriggerGenerator*[9];
+int                           quantity            = 8;
+TriggerGenerator**            generators          = new TriggerGenerator*[quantity];
 
 // setup everything
 void setup(void) {
-
-  randomSeed(analogRead(A0)); 
-  
   // reserve led action
   pinMode(ledPin, OUTPUT);
 
@@ -44,14 +40,14 @@ void setup(void) {
   bpm = constrain(bpm, 60.0, 240.0);
   
   // initialize clock interrupt, interval is in microseconds
-  clockInterval = 60000000/(24 * bpm);
+  clockInterval = 60000000/(24 * bpm)/overclock;
   
   // give some time for host device to initialize (optional)
   delay(2000);
 
   // setup generators
-  for (int i = 1; i <= 9; i++) {
-    generators[i] = new EuclidianGenerator();
+  for (int i = 1; i <= quantity; i++) {
+    generators[i] = new EuclidianGenerator(overclock);
     generators[i]->seed();
   }
 
@@ -63,54 +59,49 @@ void setup(void) {
 
 // main clock action
 void clockTick(void) {
-  
-  if (!started){
-    // send first start signal
-    usbMIDI.sendRealTime(START);
-    started = true;
-  }
-
   // increase clock count
   clockCount++;
-  change = true;
-  
-  // send clock signal
-  usbMIDI.sendRealTime(CLOCK);
+
+  // run division processing
+  processDevisions(clockCount);
 }
 
-void processDevisions(){
-  // blink led at 1/4 of the beat
-  if (clockCount%24 == 0){
-    // light up the led
-    notify(true);
-  }
-  else {
-    // turn off the led
-    notify(false);
-  }
-  
-  for (int i = 1; i <= 9; i++) {
-    if (clockCount%generators[i]->divider == 0) {
-      // process next trig
-      if (generators[i]->trig()){
-        usbMIDI.sendNoteOn(23 + i, 127, 1);
-        usbMIDI.sendNoteOff(23 + i, 127, 1);     
+void processDevisions(int count){
+
+  if (overclock == 1 || count%overclock == 0){
+    if (!started){
+      // send first start signal
+      usbMIDI.sendRealTime(START);
+      started = true;
+    }
+    // send clock signal
+    usbMIDI.sendRealTime(CLOCK);
+
+    for (int i = 1; i <= quantity; i++) {
+      if (count%generators[i]->divider == 0) {
+        // process next trig
+        if (generators[i]->trig()){
+          usbMIDI.sendNoteOn(23 + i, 127, 1);
+          usbMIDI.sendNoteOff(23 + i, 127, 1);     
+        }
       }
+    }
+    // blink led at 1/4 of the beat
+    if (count%(24*overclock) == 0){
+      // light up the led
+      notify(true);
+    }
+    else {
+      // turn off the led
+      notify(false);
+    }
+
+    if (clockCount%(1536*overclock) == 0){
+      clockCount = 0;
     }
   }
 }
 
 void loop(void) {
-
-  if (change == true){
-    // run division processing
-    processDevisions();
-      
-    if (clockCount%1536 == 0){
-      // Reset clock count each 16 bars
-      clockCount = 0;
-    }
-
-    change = false;
-  }
+  usbMIDI.read();  
 }
