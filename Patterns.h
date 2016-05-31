@@ -5,7 +5,7 @@
 #define                       START                 0xFA                // clock start message
 #define                       STOP                  0xFC                // clock stop message
 
-float                         bpm                 = 130.0;             
+float                         bpm                 = 128;             
 volatile unsigned long        clockInterval       = 60000;     
 volatile unsigned long        clockCount          = 0;                  // clock counter
 
@@ -13,7 +13,7 @@ const int                     ledPin              = LED_BUILTIN;        // pin w
 int                           ledState            = LOW;                // blink every whole beat 1/1
 
 volatile bool                 started             = false;              // we'll send start just once 
-int                           quantity            = 8;
+int                           quantity            = 4;
 
 void clockCallback();
 void notifyOnCallback();

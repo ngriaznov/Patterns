@@ -16,6 +16,14 @@
 
 bool steptrig;
 
+/*
+ * Constructor.
+ */
+EuclidianGenerator::EuclidianGenerator(int n, int a){
+  note = n;
+  address = 0;
+}
+
 /**
   Seeds current generator with new data.
 */
@@ -26,7 +34,7 @@ void EuclidianGenerator::seed()
   divider = 6;
   lenght = random(1, 16);
   pos = 0;
-  hits = random(1, 12);
+  hits = random(1, lenght);
 }
 
 /**
@@ -35,7 +43,7 @@ void EuclidianGenerator::seed()
 
   @return true if step should be pinged.
 */
-bool EuclidianGenerator::trig()
+void EuclidianGenerator::trig()
 {
 
     /*  generates euclideian patterns 
@@ -46,11 +54,13 @@ bool EuclidianGenerator::trig()
         returns true or false according to the euclidean pattern
         return (((c + r) * k) % n) < k; */ 
     pos++;
-    steptrig = (((pos + 1) * hits) % lenght) < hits; 
+
+    if ((((pos + 1) * hits) % lenght) < hits){
+      usbMIDI.sendNoteOn(note, 127, 1);
+      usbMIDI.sendNoteOff(note, 127, 1);   
+    }
 
     if (pos >= lenght){
       pos = 0; // we need to reset position to avoid overflow
     }
-
-    return steptrig;
 }

@@ -18,11 +18,13 @@ class TriggerGenerator
 {
     public:
         virtual void seed() = 0;
-        virtual bool trig() = 0;
+        virtual void trig() = 0;
         int lenght = 0;
         int hits = 0;
         int pos = 0;
         int divider = 1;
+        int note = 0;
+        int address = 0;
         
         virtual ~TriggerGenerator() {} 
         

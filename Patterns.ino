@@ -11,17 +11,20 @@
 
 */
 
-#include "EuclidianGenerator.h"
 #define _TASK_MICRO_RES
 #define _TASK_TIMECRITICAL
 #define _TASK_PRIORITY
+#define _TASK_LTS_POINTER
+#define _TASK_WDT_IDS           
 #include <TaskScheduler.h>
 #include "Patterns.h"
+#include "EuclidianGenerator.h"
 
 TriggerGenerator**            generators          = new TriggerGenerator*[quantity];
+Task**                        generatorTasks      = new Task*[quantity];
 Scheduler                     scheduler;
 Task                          clockTask(clockInterval, -1, &clockCallback, &scheduler);
-Task                          notifyTask(clockInterval*24, -1, &notifyOnCallback, &scheduler);
+Task                          notifyTask(clockInterval * 24, -1, &notifyOnCallback, &scheduler);
 
 // setup everything
 void setup(void) {
@@ -30,33 +33,69 @@ void setup(void) {
 
   // limit range
   bpm = constrain(bpm, 60.0, 240.0);
-  
+
   // initialize clock interrupt, interval is in microseconds
-  clockInterval = 60000000/(24 * bpm);
-  
+  clockInterval = 60000000 / (24 * bpm);
+
   // give some time for host device to initialize (optional)
   delay(2000);
 
-  // setup generators
-  for (int i = 1; i <= quantity; i++) {
-    generators[i] = new EuclidianGenerator();
-    generators[i]->seed();
-  }
-
+  // start sequencing
+  resetGenerators();
+  setupSequence();
   usbMIDI.sendRealTime(START);
   
-  clockTask.setInterval(clockInterval);
-  notifyTask.setInterval(clockInterval*24);
-  
+    // start scheduler
   scheduler.startNow();
+}
+
+/*
+ * Reset generators.
+ */
+void resetGenerators(){
+  // setup generators
+  for (int i = 1; i <= quantity; i++) {
+    // use little shift for the notes to shift to C2
+    generators[i] = new EuclidianGenerator(i + 23, i);
+    generators[i]->seed();
+  }
+}
+
+void restartTasks(){
+  clockTask.restart();
+  notifyTask.restart();
+
+  for (int i = 1; i <= quantity; i++) {
+    generatorTasks[i]->restart();
+  }
+}
+
+/*
+ * Setup sequence.
+ */
+void setupSequence(){
+ 
+  for (int i = 1; i <= quantity; i++) {
+    // pass generator to the task and let the scheduler do the scheduling
+    // interval should be equal to divider multiplied by clock interval
+    generatorTasks[i] = new Task(clockInterval * generators[i]->divider, -1, &trigCallback, &scheduler);
+    generatorTasks[i]->setInterval(clockInterval * generators[i]->divider);
+    generatorTasks[i]->enable();
+    generatorTasks[i]->setLtsPointer(generators[i]);
+  }
   
+  // set intervals
+  clockTask.setInterval(clockInterval);
+  notifyTask.setInterval(clockInterval * 24);
+  
+  // enable main tasks
   clockTask.enable();
   notifyTask.enable();
 }
 
 /*
- * Notification action.
- */
+   Notification action.
+*/
 void notifyOnCallback() {
   notify(true);
   notifyTask.setCallback(&notifyOffCallback);
@@ -64,40 +103,43 @@ void notifyOnCallback() {
 }
 
 /*
- * Notification action.
- */
+   Notification action.
+*/
 void notifyOffCallback() {
   notify(false);
   notifyTask.setCallback(&notifyOnCallback);
 }
 
 /*
- * Main clock action.
- */
+   Main clock action.
+*/
 void clockCallback() {
- 
   // increase clock count
   clockCount++;
 
-  // run division processing
+  if (!started){
+    started = true;
+    usbMIDI.sendRealTime(START);
+  }
   // send clock signal
-    usbMIDI.sendRealTime(CLOCK);
-    for (int i = 1; i <= quantity; i++) {
-      if (clockCount%generators[i]->divider == 0) {
-        // process next trig
-        if (generators[i]->trig()){
-          usbMIDI.sendNoteOn(23 + i, 127, 1);
-          usbMIDI.sendNoteOff(23 + i, 127, 1);     
-        }
-      }
-    }
+  usbMIDI.sendRealTime(CLOCK);
 
-    if (clockCount%1536 == 0){
-      clockCount = 0;
-    }
+  if (clockCount % 6144 == 0) {
+    clockCount = 0;
+    resetGenerators();    
+  }
+}
+
+/*
+   Triggel callback routine.
+*/
+void trigCallback() {
+  Task& task = scheduler.currentTask();
+  TriggerGenerator& var = *((TriggerGenerator*) task.getLtsPointer());
+  var.trig();
 }
 
 void loop(void) {
-  usbMIDI.read();  
+  usbMIDI.read();
   scheduler.execute();
 }

@@ -16,6 +16,7 @@ class EuclidianGenerator : public TriggerGenerator
 {
     public:
         virtual void seed();
-        virtual bool trig();
+        virtual void trig();
+        EuclidianGenerator(int note, int a);
 };
 
