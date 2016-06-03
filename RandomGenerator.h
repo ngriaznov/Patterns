@@ -1,7 +1,7 @@
 /*
   Patterns Sketch
 
-  This is a header for Euclidian generator implementation.
+  This is a header for Random generator implementation.
 
   Created 5/24/2016
   By Nikita Griaznov
@@ -17,17 +17,19 @@
    #include "TriggerGenerator.h"
 #endif
 
-class EuclidianGenerator : public TriggerGenerator {
+class RandomGenerator : public TriggerGenerator {
  public:
   virtual void seed();
   virtual void trig();
-  EuclidianGenerator(int note, int a);
+  RandomGenerator(int note, int a);
+ private:
+  bool* steps = new bool[16];
 };
 
 /*
    Constructor.
 */
-EuclidianGenerator::EuclidianGenerator(int n, int a) {
+RandomGenerator::RandomGenerator(int n, int a) {
   note = n;
   address = 0;
 }
@@ -35,13 +37,19 @@ EuclidianGenerator::EuclidianGenerator(int n, int a) {
 /*
   Seeds current generator with new data.
 */
-void EuclidianGenerator::seed() {
+void RandomGenerator::seed() {
   randomSeed(analogRead(A0));
 
   divider = 6;
-  length = random(1, 16);
+  length = random(6, 16);
   pos = 0;
   hits = random(1, length);
+
+  // generate random triggers
+  for (int p = 0; p < length; p++){
+    bool isTrig = random(1, 2) % 2 == 0;
+    steps[p] = isTrig;
+  }
 }
 
 /*
@@ -50,21 +58,14 @@ void EuclidianGenerator::seed() {
 
   @return true if step should be pinged.
 */
-void EuclidianGenerator::trig() {
-  /*  generates euclideian patterns
-      c: current step number
-      k: hits per bar
-      n: bar length
-      r: rotation
-      returns true or false according to the euclidean pattern
-      return (((c + r) * k) % n) < k; */
+void RandomGenerator::trig() {
   pos++;
 
-  if ((((pos + 1) * hits) % length) < hits) {
+  if (steps[pos]) {
     usbMIDI.sendNoteOn(note, 127, 1);
     usbMIDI.sendNoteOff(note, 127, 1);
   }
-
+  
   if (pos >= length) {
     pos = 0;  // we need to reset position to avoid overflow
   }

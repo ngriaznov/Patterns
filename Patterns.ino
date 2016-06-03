@@ -11,14 +11,18 @@
 
 */
 
+// Task Scheduler defines
 #define _TASK_MICRO_RES
 #define _TASK_TIMECRITICAL
 #define _TASK_PRIORITY
 #define _TASK_LTS_POINTER
 #define _TASK_WDT_IDS
 #include <TaskScheduler.h>
+
+// local includes
 #include "Patterns.h"
 #include "EuclidianGenerator.h"
+#include "RandomGenerator.h"
 
 TriggerGenerator** generators = new TriggerGenerator*[quantity];
 Task** generatorTasks = new Task*[quantity];
@@ -40,6 +44,7 @@ void setup(void) {
   delay(2000);
 
   // start sequencing
+  setupGenerators();
   resetGenerators();
   setupSequence();
 
@@ -53,21 +58,24 @@ void setup(void) {
 void resetGenerators() {
   // setup generators
   for (int i = 1; i <= quantity; i++) {
-    // use little shift for the notes to shift to C2
-    generators[i] = new EuclidianGenerator(i + 23, i);
+    // use little shift for the notes to shift to C1
     generators[i]->seed();
   }
 }
 
 /*
- * Restart tasks routine. May be needed when everything is out if sync.
- */
-void restartTasks() {
-  clockTask.restart();
-  notifyTask.restart();
-
+   Setup generators.
+*/
+void setupGenerators() {
+  // setup generators
   for (int i = 1; i <= quantity; i++) {
-    generatorTasks[i]->restart();
+    // use little shift for the notes to shift to C1
+    if (i%2 == 0){
+      generators[i] = new EuclidianGenerator(i + 23, i);
+    }
+    else {
+      generators[i] = new RandomGenerator(i + 23, i);
+    }
   }
 }
 
@@ -125,9 +133,10 @@ void clockCallback() {
   // send clock signal
   usbMIDI.sendRealTime(CLOCK);
 
-  if (clockCount % 6144 == 0) {
+  // reset requences each 240 seconds (for 128 bpm) 12288
+  if (clockCount % 192 == 0) {
     clockCount = 0;
-    resetGenerators();
+    //resetGenerators();
   }
 }
 
@@ -135,8 +144,13 @@ void clockCallback() {
    Triggel callback routine.
 */
 void trigCallback() {
+  // get current executed task
   Task& task = scheduler.currentTask();
+
+  // get trigger generator from LTS pointer of current task
   TriggerGenerator& var = *((TriggerGenerator*)task.getLtsPointer());
+
+  // trig generator action
   var.trig();
 }
 

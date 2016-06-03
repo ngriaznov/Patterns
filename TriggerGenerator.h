@@ -12,7 +12,7 @@ class TriggerGenerator {
  public:
   virtual void seed() = 0;
   virtual void trig() = 0;
-  int lenght = 0;
+  int length = 0;
   int hits = 0;
   int pos = 0;
   int divider = 1;
