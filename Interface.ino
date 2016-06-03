@@ -1,8 +1,5 @@
 /*
-  Patterns Sketch
-
-  This is a sketch for sending USB MIDI clock and triggers
-  that are following several algorithms.
+  Patterns Sketch UI methods.
 
   Created 5/24/2016
   By Nikita Griaznov

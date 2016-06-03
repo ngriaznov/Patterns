@@ -15,18 +15,17 @@
 #define _TASK_TIMECRITICAL
 #define _TASK_PRIORITY
 #define _TASK_LTS_POINTER
-#define _TASK_WDT_IDS           
+#define _TASK_WDT_IDS
 #include <TaskScheduler.h>
 #include "Patterns.h"
 #include "EuclidianGenerator.h"
 
-TriggerGenerator**            generators          = new TriggerGenerator*[quantity];
-Task**                        generatorTasks      = new Task*[quantity];
-Scheduler                     scheduler;
-Task                          clockTask(clockInterval, -1, &clockCallback, &scheduler);
-Task                          notifyTask(clockInterval * 24, -1, &notifyOnCallback, &scheduler);
+TriggerGenerator** generators = new TriggerGenerator*[quantity];
+Task** generatorTasks = new Task*[quantity];
+Scheduler scheduler;
+Task clockTask(clockInterval, -1, &clockCallback, &scheduler);
+Task notifyTask(clockInterval * 24, -1, &notifyOnCallback, &scheduler);
 
-// setup everything
 void setup(void) {
   // reserve led action
   pinMode(ledPin, OUTPUT);
@@ -43,16 +42,15 @@ void setup(void) {
   // start sequencing
   resetGenerators();
   setupSequence();
-  usbMIDI.sendRealTime(START);
-  
-    // start scheduler
+
+  // start scheduler
   scheduler.startNow();
 }
 
 /*
- * Reset generators.
- */
-void resetGenerators(){
+   Reset generators.
+*/
+void resetGenerators() {
   // setup generators
   for (int i = 1; i <= quantity; i++) {
     // use little shift for the notes to shift to C2
@@ -61,7 +59,10 @@ void resetGenerators(){
   }
 }
 
-void restartTasks(){
+/*
+ * Restart tasks routine. May be needed when everything is out if sync.
+ */
+void restartTasks() {
   clockTask.restart();
   notifyTask.restart();
 
@@ -71,23 +72,23 @@ void restartTasks(){
 }
 
 /*
- * Setup sequence.
- */
-void setupSequence(){
- 
+   Setup sequence.
+*/
+void setupSequence() {
   for (int i = 1; i <= quantity; i++) {
     // pass generator to the task and let the scheduler do the scheduling
     // interval should be equal to divider multiplied by clock interval
-    generatorTasks[i] = new Task(clockInterval * generators[i]->divider, -1, &trigCallback, &scheduler);
+    generatorTasks[i] = new Task(clockInterval * generators[i]->divider, -1,
+                                 &trigCallback, &scheduler);
     generatorTasks[i]->setInterval(clockInterval * generators[i]->divider);
     generatorTasks[i]->enable();
     generatorTasks[i]->setLtsPointer(generators[i]);
   }
-  
+
   // set intervals
   clockTask.setInterval(clockInterval);
   notifyTask.setInterval(clockInterval * 24);
-  
+
   // enable main tasks
   clockTask.enable();
   notifyTask.enable();
@@ -117,7 +118,7 @@ void clockCallback() {
   // increase clock count
   clockCount++;
 
-  if (!started){
+  if (!started) {
     started = true;
     usbMIDI.sendRealTime(START);
   }
@@ -126,7 +127,7 @@ void clockCallback() {
 
   if (clockCount % 6144 == 0) {
     clockCount = 0;
-    resetGenerators();    
+    resetGenerators();
   }
 }
 
@@ -135,7 +136,7 @@ void clockCallback() {
 */
 void trigCallback() {
   Task& task = scheduler.currentTask();
-  TriggerGenerator& var = *((TriggerGenerator*) task.getLtsPointer());
+  TriggerGenerator& var = *((TriggerGenerator*)task.getLtsPointer());
   var.trig();
 }
 
