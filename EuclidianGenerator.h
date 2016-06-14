@@ -39,9 +39,9 @@ void EuclidianGenerator::seed() {
   randomSeed(analogRead(A0));
 
   divider = 6;
-  length = random(1, 16);
+  length = random(1, 32);
   pos = 0;
-  hits = random(1, length);
+  hits = random(1, 4);
 }
 
 /*
@@ -51,6 +51,12 @@ void EuclidianGenerator::seed() {
   @return true if step should be pinged.
 */
 void EuclidianGenerator::trig() {
+  if (pos == 0){
+    // send reset signal
+    usbMIDI.sendNoteOn(note + 24, 127, 1);
+    usbMIDI.sendNoteOff(note + 24, 127, 1);
+  }
+  
   /*  generates euclideian patterns
       c: current step number
       k: hits per bar

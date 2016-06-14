@@ -138,6 +138,12 @@ void clockCallback() {
     clockCount = 0;
     //resetGenerators();
   }
+
+  if (clockCount % 192 == 0 && reseed){
+    resetGenerators();
+    clockCount = 0;
+    reseed = false;
+  }
 }
 
 /*
@@ -155,6 +161,9 @@ void trigCallback() {
 }
 
 void loop(void) {
+  if (analogRead(A13) > 700){
+    reseed = true;
+  }
   usbMIDI.read();
   scheduler.execute();
 }

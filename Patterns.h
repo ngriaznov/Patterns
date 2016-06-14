@@ -10,6 +10,7 @@ const int ledPin = LED_BUILTIN;               // pin with a LED
 int ledState = LOW;                           // blink every whole beat 1/1
 
 volatile bool started = false;                // we'll send start just once
+volatile bool reseed = false;                 // if this is tru, we need to restart on next bar
 int quantity = 4;                             // quantity of generators
 
 void clockCallback();                         // clock tick task callback

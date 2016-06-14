@@ -17,6 +17,23 @@
    #include "TriggerGenerator.h"
 #endif
 
+String patterns[]=
+  {
+    "1111111111111111", 
+    "0001010000000100", 
+    "0011000101100000",
+    "00110001001001", 
+    "10110110110101",
+    "110001001010",
+    "100100100100",
+    "01010010",
+    "1001001",
+    "0100001",
+    "011001",
+    "100101",
+    "10110",
+    "10010"};
+
 class RandomGenerator : public TriggerGenerator {
  public:
   virtual void seed();
@@ -41,14 +58,29 @@ void RandomGenerator::seed() {
   randomSeed(analogRead(A0));
 
   divider = 6;
-  length = random(6, 16);
-  pos = 0;
-  hits = random(1, length);
+//  length = random(6, 16);
+//  pos = 0;
+//  hits = random(1, length);
+//
+//  // generate random triggers
+//  for (int p = 0; p < length; p++){
+//    bool isTrig = random(1, 2) % 2 == 0;
+//    steps[p] = isTrig;
+//  }
 
-  // generate random triggers
-  for (int p = 0; p < length; p++){
-    bool isTrig = random(1, 2) % 2 == 0;
-    steps[p] = isTrig;
+  // take random pattern
+  int pattern = random(1, 14);
+
+  // get length
+  String description = patterns[pattern];
+  length = description.length();
+  for (int element = 0; element < length; element++){
+    if (description.charAt(element) == '0'){
+      steps[element] = false;
+    }
+    else {
+      steps[element] = true;
+    }
   }
 }
 
@@ -59,6 +91,11 @@ void RandomGenerator::seed() {
   @return true if step should be pinged.
 */
 void RandomGenerator::trig() {
+  if (pos == 0){
+    // send reset signal
+    usbMIDI.sendNoteOn(note + 24, 127, 1);
+    usbMIDI.sendNoteOff(note + 24, 127, 1);
+  }
   pos++;
 
   if (steps[pos]) {
